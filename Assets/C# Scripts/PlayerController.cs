@@ -7,15 +7,15 @@ public class PlayerController : MonoBehaviour
 {
     public TwoD_StateMachine anim;
     public Rigidbody2D rb;
-    private SpriteRenderer spriteRenderer;
-
-    public float moveSpeed;
-    public float jumpForce;
 
     public Transform[] groundChecks;
     public LayerMask groundLayer;
 
     public HitBox[] hitBoxes;
+
+
+    public float moveSpeed;
+    public float jumpForce;
 
     public float health;
 
@@ -42,7 +42,6 @@ public class PlayerController : MonoBehaviour
     {
         anim = GetComponent<TwoD_StateMachine>();
         rb = GetComponent<Rigidbody2D>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
 
@@ -83,13 +82,9 @@ public class PlayerController : MonoBehaviour
         //flip player sprite
         if (anim.CanPlayerTurn)
         {
-            if (dir.x > 0)
+            if (dir.x != 0)
             {
-                spriteRenderer.flipX = false;
-            }
-            else if (dir.x < 0)
-            {
-                spriteRenderer.flipX = true;
+                transform.localScale = new Vector3(Mathf.Sign(dir.x), 1, 1);
             }
         }
         

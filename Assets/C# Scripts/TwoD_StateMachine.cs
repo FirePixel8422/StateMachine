@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -75,7 +76,7 @@ public class TwoD_StateMachine : MonoBehaviour
 
     private void ChangeAnimation(string animationString, int layer, out bool failed)
     {
-        if (currentAnimation == animationString)
+        if (currentAnimation == animationString && attackAnimations.Contains(animationString) == false)
         {
             failed = true;
             return;
@@ -194,7 +195,13 @@ public class TwoD_StateMachine : MonoBehaviour
         {
             return;
         }
-        ChangeAnimation(attackAnimations[attackComboId], 0, out _);
+        ChangeAnimation(attackAnimations[attackComboId], 0, out bool failed);
+
+        if (failed)
+        {
+            return;
+        }
+
         attacking = true;
 
         attackComboId += 1;
