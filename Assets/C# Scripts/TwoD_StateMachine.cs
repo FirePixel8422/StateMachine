@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 
@@ -8,20 +9,14 @@ using UnityEngine;
 public class TwoD_StateMachine : MonoBehaviour
 {
     private Animator anim;
-    private SpriteRenderer spriteRenderer;
+    private Rigidbody2D rb;
 
 
-
-    private void Start()
-    {
-        anim = GetComponent<Animator>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
-    }
+    #region animationStrings
 
     [Header("Start Animation")]
     [SerializeField]
     private string currentAnimation;
-
 
 
     [Header("Animation Names")]
@@ -29,69 +24,234 @@ public class TwoD_StateMachine : MonoBehaviour
     [SerializeField]
     private string idleAnimation;
     [SerializeField]
+    private string runAnimation;
+
+    [SerializeField]
     private string jumpAnimation;
     [SerializeField]
     private string fallAnimation;
+
     [SerializeField]
-    private string runAnimation;
-    [SerializeField]
-    private string attackAnimation;
+    private string[] attackAnimations;
+    public float resetComboDelay;
+
     [SerializeField]
     private string hurtAnimation;
     [SerializeField]
     private string deathAnimation;
+    #endregion
+
+    #region animationStates
 
     public bool jumping;
     public bool dead;
-    public bool attack;
+    public bool hurt;
+    public bool attacking;
+    public int attackComboId;
+    #endregion
 
+    public bool CanPlayerTurn
+    {
+        get
+        {
+            return attacking == false;
+        }
+    }
+
+
+
+    private Coroutine comboTimerCO;
+    private Coroutine jumpTimerCO;
+
+
+    private void Start()
+    {
+        anim = GetComponent<Animator>();
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+
+    #region Change Animation Function
 
     private void ChangeAnimation(string animationString, int layer, out bool failed)
     {
-        failed = false;
-
         if (currentAnimation == animationString)
         {
             failed = true;
             return;
         }
+
+        failed = false;
         currentAnimation = animationString;
 
         anim.Play(animationString, layer);
     }
 
+    private void ChangeAnimation(string animationString, int layer, out bool failed, float transitionDuration)
+    {
+        if (currentAnimation == animationString)
+        {
+            failed = true;
+            return;
+        }
+
+        failed = false;
+        currentAnimation = animationString;
+
+        anim.CrossFade(animationString, transitionDuration, layer);
+    }
+    #endregion
+
+
 
     public void Idle()
     {
-        if (jumping || dead || attack)
+        if (jumping || dead || attacking || hurt)
         {
             return;
         }
         ChangeAnimation(idleAnimation, 0, out _);
     }
+
+    
     public void Run()
     {
-        if (jumping || dead || attack)
+        if (jumping || dead || attacking || hurt)
         {
             return;
         }
         ChangeAnimation(runAnimation, 0, out _);
     }
-    public void Attack(float delay)
+
+
+    #region Jump And Fall Animation
+
+    public void JumpAndAutoDetectFall()
     {
-        if (dead || attack)
+        if (dead || hurt)
         {
             return;
         }
-        ChangeAnimation(attackAnimation, 0, out _);
-        attack = true;
-        StartCoroutine(EndAttack(delay));
-    }
-    public IEnumerator EndAttack(float delay)
-    {
-        yield return new WaitForSeconds(delay);
 
-        attack = false;
+
+        if (jumpTimerCO != null)
+        {
+            StopCoroutine(jumpTimerCO);
+        }
+
+        jumpTimerCO = StartCoroutine(JumpAndAutoDetectFallTimer());
+    }
+    private IEnumerator JumpAndAutoDetectFallTimer()
+    {
+        jumping = true;
+
+        if (attacking == false)
+        {
+            ChangeAnimation(jumpAnimation, 0, out bool failed);
+
+            if (failed)
+            {
+                yield break;
+            }
+        }
+
+        //start fall down animation when player starts falling
+        while (true)
+        {
+            yield return null;
+
+            if (rb.velocity.y < 0)
+            {
+                break;
+            }
+        }
+
+        //wait until player hits the ground and end function
+        //also keep force updating the falling animation so animations transition back to this one.
+        while (true)
+        {
+            yield return null;
+            if (dead == false && attacking == false)
+            {
+                ChangeAnimation(fallAnimation, 0, out _);
+            }
+
+            if (rb.velocity.y == 0)
+            {
+                jumping = false;
+                yield break;
+            }
+        }
+    }
+    #endregion
+
+
+    #region Attack and Combo's Animation
+
+    public void Attack()
+    {
+        if (dead || attacking || hurt)
+        {
+            return;
+        }
+        ChangeAnimation(attackAnimations[attackComboId], 0, out _);
+        attacking = true;
+
+        attackComboId += 1;
+        if (attackComboId == attackAnimations.Length)
+        {
+            attackComboId = 0;
+        }
+
+
+        if (comboTimerCO != null)
+        {
+            StopCoroutine(comboTimerCO);
+        }
+        comboTimerCO = StartCoroutine(EndAttackTimer());
+    }
+    public IEnumerator EndAttackTimer()
+    {
+        yield return new WaitForEndOfFrame();
+
+        float clipTime = anim.GetCurrentAnimatorStateInfo(0).length;
+
+        yield return new WaitForSeconds(clipTime);
+
+        attacking = false;
+
+        if (attackAnimations.Length > 1)
+        {
+            yield return new WaitForSeconds(resetComboDelay);
+            attackComboId = 0;
+        }
+    }
+    #endregion
+
+
+    public void Hurt()
+    {
+        if (dead)
+        {
+            return;
+        }
+
+        hurt = true;
+        ChangeAnimation(hurtAnimation, 0, out _);
+
+
+        attacking = false;
+        attackComboId = 0;
+        jumping = false;
+
+        StopAllCoroutines();
+        StartCoroutine(EndHurtTimer());
+    }
+    private IEnumerator EndHurtTimer()
+    {
+        float clipTime = anim.GetCurrentAnimatorStateInfo(0).length;
+        yield return new WaitForSeconds(clipTime);
+        hurt = false;
     }
 
 
@@ -99,52 +259,5 @@ public class TwoD_StateMachine : MonoBehaviour
     {
         dead = true;
         ChangeAnimation(deathAnimation, 0, out _);
-    }
-    public void Hurt()
-    {
-        if (dead)
-        {
-            return;
-        }
-        ChangeAnimation(hurtAnimation, 1, out _);
-    }
-
-
-    public void JumpAndAutoDetectFall(Rigidbody2D playerRigidbody)
-    {
-        if (dead || attack)
-        {
-            return;
-        }
-        StartCoroutine(JumpAndAutoDetectFallTimer(playerRigidbody));
-    }
-    private IEnumerator JumpAndAutoDetectFallTimer(Rigidbody2D playerRigidbody)
-    {
-        jumping = true;
-        ChangeAnimation(jumpAnimation, 0, out bool failed);
-
-        if (failed)
-        {
-            yield break;
-        }
-
-        while (true)
-        {
-            yield return null;
-            if (playerRigidbody.velocity.y < 0)
-            {
-                ChangeAnimation(fallAnimation, 0, out _);
-                break;
-            }
-        }
-        while (true)
-        {
-            yield return null;
-            if (playerRigidbody.velocity.y == 0)
-            {
-                jumping = false;
-                yield break;
-            }
-        }
-    }
+    }    
 }
