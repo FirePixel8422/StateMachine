@@ -2555,6 +2555,7 @@ MonoBehaviour:
   - {fileID: 92866313}
   - {fileID: 1861387894}
   - {fileID: 632916131}
+  attackSpeedMultiplier: 1
   moveSpeed: 2.25
   jumpForce: 8
   health: 100

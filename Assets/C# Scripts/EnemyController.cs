@@ -102,7 +102,7 @@ public class EnemyController : MonoBehaviour
         attackReady = false;
         print("start");
 
-        anim.Attack();
+        anim.Attack(1);
 
         yield return new WaitForSeconds(attackInterval);
         print("stopeed");

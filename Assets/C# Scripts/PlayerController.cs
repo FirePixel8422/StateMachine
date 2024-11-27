@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
 
     public HitBox[] hitBoxes;
 
+    public float attackSpeedMultiplier;
 
     public float moveSpeed;
     public float jumpForce;
@@ -107,7 +108,7 @@ public class PlayerController : MonoBehaviour
 
     private void Attack()
     {
-        anim.Attack();
+        anim.Attack(attackSpeedMultiplier);
     }
 
     public void EnableCollider(int id)

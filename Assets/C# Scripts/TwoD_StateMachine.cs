@@ -85,6 +85,22 @@ public class TwoD_StateMachine : MonoBehaviour
         failed = false;
         currentAnimation = animationString;
 
+        anim.speed = 1;
+        anim.Play(animationString, layer);
+    }
+
+    private void ChangeAnimation(string animationString, int layer, float speed, out bool failed)
+    {
+        if (currentAnimation == animationString && attackAnimations.Contains(animationString) == false)
+        {
+            failed = true;
+            return;
+        }
+
+        failed = false;
+        currentAnimation = animationString;
+
+        anim.speed = speed;
         anim.Play(animationString, layer);
     }
 
@@ -189,13 +205,13 @@ public class TwoD_StateMachine : MonoBehaviour
 
     #region Attack and Combo's Animation
 
-    public void Attack()
+    public void Attack(float attackSpeedMultiplier)
     {
         if (dead || attacking || hurt)
         {
             return;
         }
-        ChangeAnimation(attackAnimations[attackComboId], 0, out bool failed);
+        ChangeAnimation(attackAnimations[attackComboId], 0, attackSpeedMultiplier, out bool failed);
 
         if (failed)
         {
@@ -215,9 +231,9 @@ public class TwoD_StateMachine : MonoBehaviour
         {
             StopCoroutine(comboTimerCO);
         }
-        comboTimerCO = StartCoroutine(EndAttackTimer());
+        comboTimerCO = StartCoroutine(EndAttackTimer(attackSpeedMultiplier));
     }
-    public IEnumerator EndAttackTimer()
+    public IEnumerator EndAttackTimer(float attackSpeedMultiplier)
     {
         yield return new WaitForEndOfFrame();
 
@@ -229,7 +245,7 @@ public class TwoD_StateMachine : MonoBehaviour
 
         if (attackAnimations.Length > 1)
         {
-            yield return new WaitForSeconds(resetComboDelay);
+            yield return new WaitForSeconds(resetComboDelay / attackSpeedMultiplier);
             attackComboId = 0;
         }
     }
